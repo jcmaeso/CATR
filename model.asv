@@ -2,13 +2,13 @@ clc
 clear
 
 baseTriang1 = 9;
-baseTriang2 = 7;
+baseTriang2 = 8;
 htriang1 = 5;
-htriang2 = 8;
+htriang2 = 7;
 maxBox = 300;
-repetition_factor = [8,8]; %X-Y Repetition Factor
+REPET
 
-filename = "test2.cst";
+filename = "mf2.cst";
 triang = triangle_unit(baseTriang1,baseTriang2,htriang1,htriang2,[0,0]);
 
 def_profile = build_profile_from_form_xy(triang,[8,8]);
@@ -79,10 +79,10 @@ sweepCurve(mws,"Create Paraboloid","paraboloid","PEC","paraboloid:parabola","par
 insertSolids(mws,'Insert Paraboloid',"component1:paraboloid",solid_frame_names(1));
 splitShape(mws,"Split Reflector","paraboloid","component1");
 %Delete estra solids
-solidDelete(mws,"Delete Excess of parabola","paraboloid","component1");
+solidDelete(mws,"Delete Excess of parabola","paraboloid_1","component1");
 solidDelete(mws,"Delete border","border1","component1");
 %Thicken Reflector
-thickenSheet(mws,"Thicken Reflector","component1:paraboloid_1","ReflectorThickness")
+thickenSheet(mws,"Thicken Reflector","component1:paraboloid","ReflectorThickness")
 %extrudeCurve(mws,"Extrude Profile","extruded_border","border:reflector",-800);
 
 %Local WCS to focus
@@ -94,7 +94,7 @@ createFarFieldSource(mws,"Farfield source 1","ffs","1",fullfile(pwd,"farfieldsou
 %Add Field Monitors
 setMonitorEFieldPlane(mws,"EField Monitor",10,40,4,1.5*F);
 %Save File
-mws.invoke('saveas',fullfile(cd,'cst',filename),'false');
+mws.invoke('saveas',fullfile(cd,filename),'false');
 
 
 function[] = addToCstHistory(mws,command,VBA)
@@ -152,6 +152,7 @@ function[] = sweepCurve(mws,command,solid_name,material,target_curve,path)
         '.Taperangle "0.0" \n',...
         '.ProjectProfileToPathAdvanced "False" \n',...
         '.DeletePath "False" \n',...
+        '.DeleteCurve "False" \n',...
         '.Path "%s" \n',...
         '.Curve "%s" \n',...
         '.Create \n',... 
