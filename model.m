@@ -2,16 +2,16 @@ clc
 clear
 
 baseTriang1 = 9;
-baseTriang2 = 8;
+baseTriang2 = 7;
 htriang1 = 5;
-htriang2 = 7;
+htriang2 = 8;
 maxBox = 300;
+repetition_factor = [8,8]; %X-Y Repetition Factor
 
-
-filename = "test2.cst";
+filename = "mf2.cst";
 triang = triangle_unit(baseTriang1,baseTriang2,htriang1,htriang2,[0,0]);
 
-def_profile = build_profile_from_form_xy(triang,[7,7]);
+def_profile = build_profile_from_form_xy(triang,[8,8]);
 plot(def_profile(:,1),def_profile(:,2));
 axis([-max(max(def_profile)) max(max(def_profile)) -max(max(def_profile)) max(max(def_profile))])
 
@@ -23,7 +23,8 @@ ReflectorThickness = 3;
 tilt = (atand((D+C)/(2*F))+atand(C/(2*F)));
 %Simulation Parametes
 frequency_min = 8;  %Ghz
-frequency_max = 10;  %Ghz
+frequency_max = 42;  %Ghz
+
 
 units_vba = sprintf(['With Units\n',...
     '.Geometry "%s"\n',...
@@ -50,7 +51,7 @@ setFrequencyRange(mws,'Frequency Range',[frequency_min,frequency_max]) %In GHz
 %Parameter Setter
 invoke(mws, 'StoreParameter','maxBox',maxBox);
 invoke(mws, 'StoreParameter','D',D);
-invoke(mws, 'StoreParameter','C',C);
+invoke(mws, 'StoreParameter','C','D/2');
 invoke(mws, 'StoreParameter','F',F);
 invoke(mws, 'StoreParameter','tilt',-tilt);
 invoke(mws, 'StoreParameter','ReflectorThickness',ReflectorThickness);
@@ -78,20 +79,20 @@ sweepCurve(mws,"Create Paraboloid","paraboloid","PEC","paraboloid:parabola","par
 insertSolids(mws,'Insert Paraboloid',"component1:paraboloid",solid_frame_names(1));
 splitShape(mws,"Split Reflector","paraboloid","component1");
 %Delete estra solids
-solidDelete(mws,"Delete Excess of parabola","paraboloid_1","component1");
+solidDelete(mws,"Delete Excess of parabola","paraboloid","component1");
 solidDelete(mws,"Delete border","border1","component1");
 %Thicken Reflector
-thickenSheet(mws,"Thicken Reflector","component1:paraboloid","ReflectorThickness")
+thickenSheet(mws,"Thicken Reflector","component1:paraboloid_1","ReflectorThickness")
 %extrudeCurve(mws,"Extrude Profile","extruded_border","border:reflector",-800);
 
 %Local WCS to focus
 activateLocalWCS(mws,"Change to Local WCS");
-moveLocalWCS2Focus(mws,"Focus WCS",["0.0","-C","F"],"tilt");
+moveLocalWCS2Focus(mws,"Focus WCS",["0.0","0.0","F"],"tilt");
 %Add Farfield sources
-createFarFieldSource(mws,"Farfield source 1","ffs","1",fullfile(pwd,"diagrams","9.ffs"));
+createFarFieldSource(mws,"Farfield source 1","ffs","1",fullfile(pwd,"farfieldsources2.ffs"));
 
 %Add Field Monitors
-setMonitorEFieldPlane(mws,"EField Monitor",9,200);
+setMonitorEFieldPlane(mws,"EField Monitor",10,40,4,1.5*F);
 %Save File
 mws.invoke('saveas',fullfile(cd,filename),'false');
 
@@ -265,14 +266,12 @@ function[] = setFrequencyRange(mws,command,frequencies)
     addToCstHistory(mws,sprintf("%s",command),sprintf('Solver.FrequencyRange "%s", "%s"',frequencies(1),frequencies(2)));
 end
 
-function[] = setMonitorEFieldPlane(mws,command,frequency,z)
+function[] = setMonitorEFieldPlane(mws,command,fmin,fmax,fsamples,z)
         farfield_import_vba = sprintf(['With Monitor\n',...
             '.Reset \n',...
-            '.Name "e-field (f=%d;z=%f)" \n',...
             '.Dimension "Volume"  \n',...
             '.Domain "Frequency" \n',...
             '.FieldType "Efield"  \n',...
-            '.MonitorValue "%f"  \n',...
             '.UseSubvolume "True" \n',...
             '.Coordinates "Structure"  \n',...
             '.SetSubvolume "-2*D-C", "+2*D+C", "-2*D-C", "2*D+C", "-2.9316524078422", "15.723665948778"  \n',...
@@ -280,9 +279,10 @@ function[] = setMonitorEFieldPlane(mws,command,frequency,z)
             ' .SetSubvolumeInflateWithOffset "False"   \n',...
             ' .PlaneNormal "z"   \n',...
             ' .PlanePosition "%f" \n'...
+            '.CreateUsingLinearSamples "%.3f","%.3f","%d" \n'...
             '.Create \n'...
-            'End With' ],frequency,z,frequency,z);
-        addToCstHistory(mws,sprintf("%s(f=%d;z=%f)",command,frequency,z),farfield_import_vba);
+            'End With' ],z,fmin,fmax,fsamples);
+        addToCstHistory(mws,command,farfield_import_vba);
 end
 
 
