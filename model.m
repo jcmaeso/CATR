@@ -8,7 +8,7 @@ htriang2 = 8;
 maxBox = 300;
 repetition_factor = [8,8]; %X-Y Repetition Factor
 
-filename = "test2.cst";
+filename = "catr.cst";
 triang = triangle_unit(baseTriang1,baseTriang2,htriang1,htriang2,[0,0]);
 
 def_profile = build_profile_from_form_xy(triang,[8,8]);
@@ -22,8 +22,8 @@ F = 150;
 ReflectorThickness = 3;
 tilt = (atand((D+C)/(2*F))+atand(C/(2*F)));
 %Simulation Parametes
-frequency_min = 8;  %Ghz
-frequency_max = 42;  %Ghz
+frequency_min = 80;  %Ghz
+frequency_max = 120;  %Ghz
 
 
 units_vba = sprintf(['With Units\n',...
@@ -92,14 +92,14 @@ moveLocalWCS2Focus(mws,"Focus WCS",["0.0","0.0","F"],"tilt");
 createFarFieldSource(mws,"Farfield source 1","ffs","1",fullfile(pwd,"farfieldsources2.ffs"));
 
 %Add Field Monitors
-setMonitorEFieldPlane(mws,"EField Monitor",10,40,4,1.5*F);
+setMonitorEFieldPlane(mws,"EField Monitor",80,120,5,1.5*F);
+%Simulation Setup
+simulationSetup(mws,"Sim Setup","simParameters.txt");
 %Save File
 mws.invoke('saveas',fullfile(cd,'cst',filename),'false');
-
-
-function[] = addToCstHistory(mws,command,VBA)
-    mws.invoke("AddToHistory",command,VBA);
-end
+%Start Solver
+solver = invoke(mws, 'FDSolver');
+invoke(solver, 'start');
 
 function[] = createPolygonfromPoints(mws,command,name,curve_name,points)
     point_list = sprintf('.LineTo "%0.5f","%0.5f" \n',points(2:end,:).');
