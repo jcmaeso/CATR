@@ -5,25 +5,26 @@ baseTriang1 = 9;
 baseTriang2 = 7;
 htriang1 = 5;
 htriang2 = 8;
-maxBox = 300;
+maxBox = 600;
 repetition_factor = [8,8]; %X-Y Repetition Factor
 
-filename = "catr.cst";
+filename = "catr_qz_vol_expand.cst";
 triang = triangle_unit(baseTriang1,baseTriang2,htriang1,htriang2,[0,0]);
-
+%triang = [0, 0; 9, 0];
 def_profile = build_profile_from_form_xy(triang,[8,8]);
-plot(def_profile(:,1),def_profile(:,2));
-axis([-max(max(def_profile)) max(max(def_profile)) -max(max(def_profile)) max(max(def_profile))])
+%plot(def_profile(:,1),def_profile(:,2));
+%axis([-max(max(def_profile)) max(max(def_profile)) -max(max(def_profile)) max(max(def_profile))])
 
 %Reflector Parameters
 D = max(def_profile(:,2))-min(def_profile(:,2));
 C = 50;
 F = 150;
-ReflectorThickness = 3;
-tilt = (atand((D+C)/(2*F))+atand(C/(2*F)));
+ReflectorThickness = 2;
+cp = C-D/2;
+tilt = atand((D+cp)/(2*F))+atand(cp/(2*F));
 %Simulation Parametes
-frequency_min = 80;  %Ghz
-frequency_max = 120;  %Ghz
+frequency_min = 20;  %Ghz
+frequency_max = 130;  %Ghz
 
 
 units_vba = sprintf(['With Units\n',...
@@ -37,7 +38,7 @@ units_vba = sprintf(['With Units\n',...
     '.Conductance "Siemens"\n',...
     '.Capacitance "PikoF"\n',...
     '.Inductance "NanoH"\n',...
-    'End With' ],"mm","ghz","s","kelvin");
+    'End With' ],"cm","ghz","s","kelvin");
 
 
 cst = actxserver('CSTStudio.Application');
@@ -51,7 +52,7 @@ setFrequencyRange(mws,'Frequency Range',[frequency_min,frequency_max]) %In GHz
 %Parameter Setter
 invoke(mws, 'StoreParameter','maxBox',maxBox);
 invoke(mws, 'StoreParameter','D',D);
-invoke(mws, 'StoreParameter','C','D/2');
+invoke(mws, 'StoreParameter','C',C);
 invoke(mws, 'StoreParameter','F',F);
 invoke(mws, 'StoreParameter','tilt',-tilt);
 invoke(mws, 'StoreParameter','ReflectorThickness',ReflectorThickness);
@@ -79,27 +80,36 @@ sweepCurve(mws,"Create Paraboloid","paraboloid","PEC","paraboloid:parabola","par
 insertSolids(mws,'Insert Paraboloid',"component1:paraboloid",solid_frame_names(1));
 splitShape(mws,"Split Reflector","paraboloid","component1");
 %Delete estra solids
-solidDelete(mws,"Delete Excess of parabola","paraboloid","component1");
+solidDelete(mws,"Delete Excess of parabola","paraboloid_1","component1");
 solidDelete(mws,"Delete border","border1","component1");
 %Thicken Reflector
-thickenSheet(mws,"Thicken Reflector","component1:paraboloid_1","ReflectorThickness")
+thickenSheet(mws,"Thicken Reflector","component1:paraboloid","ReflectorThickness")
 %extrudeCurve(mws,"Extrude Profile","extruded_border","border:reflector",-800);
 
 %Local WCS to focus
 activateLocalWCS(mws,"Change to Local WCS");
 moveLocalWCS2Focus(mws,"Focus WCS",["0.0","0.0","F"],"tilt");
 %Add Farfield sources
-createFarFieldSource(mws,"Farfield source 1","ffs","1",fullfile(pwd,"farfieldsources2.ffs"));
+createFarFieldSource(mws,"Farfield source 1","ffs","1",fullfile(pwd,"farfieldsources30-120.ffs"));
+
+%Simulation Bounding Box
+activateGlobalWCS(mws,"Return to global WCS")
+createPolygon3D(mws,"Create expand line X","framex","frame",["-55","0","0";"55","0","0"]);
+createPolygon3D(mws,"Create expand line Y","framey","frame",["0","-10","0";"0","110","0"]);
 
 %Add Field Monitors
-setMonitorEFieldPlane(mws,"EField Monitor",80,120,5,1.5*F);
+%setMonitorEFieldVolume(mws,"Efield Monitors Volume",30,120,10,["-50","0","100";"50","100","300"]);
+% for i=200:25:250
+%     setMonitorEFieldPlane(mws,sprintf("EField Monitor %f",i),30,120,10,i);
+% end
+
 %Simulation Setup
 simulationSetup(mws,"Sim Setup","simParameters.txt");
 %Save File
 mws.invoke('saveas',fullfile(cd,'cst',filename),'false');
 %Start Solver
-solver = invoke(mws, 'FDSolver');
-invoke(solver, 'start');
+%solver = invoke(mws, 'FDSolver');
+%invoke(solver, 'start');
 
 function[] = createPolygonfromPoints(mws,command,name,curve_name,points)
     point_list = sprintf('.LineTo "%0.5f","%0.5f" \n',points(2:end,:).');
@@ -255,6 +265,10 @@ function[] = activateLocalWCS(mws,command)
     addToCstHistory(mws,command,'WCS.ActivateWCS "local"');
 end
 
+function[] = activateGlobalWCS(mws,command)
+    addToCstHistory(mws,command,'WCS.ActivateWCS "global"');
+end
+
 function[] = moveLocalWCS2Focus(mws,command,coordinates,tilt)
     addToCstHistory(mws,sprintf("%s(Movement)",command),sprintf('WCS.MoveWCS "local", "%s", "%s", "%s"',arrayfun(@sprintf_float2str,coordinates)));
     addToCstHistory(mws,sprintf("%s(tilt-v)",command),'WCS.RotateWCS "v", "180"');
@@ -283,6 +297,23 @@ function[] = setMonitorEFieldPlane(mws,command,fmin,fmax,fsamples,z)
             '.Create \n'...
             'End With' ],z,fmin,fmax,fsamples);
         addToCstHistory(mws,command,farfield_import_vba);
+end
+
+function[] = setMonitorEFieldVolume(mws,command,fmin,fmax,fsamples,volume)
+        volume = arrayfun(@sprintf_float2str,volume);
+        efield_monitor_vba = sprintf(['With Monitor\n',...
+            '.Reset \n',...
+            '.Dimension "Volume"  \n',...
+            '.Domain "Frequency" \n',...
+            '.FieldType "Efield"  \n',...
+            '.UseSubvolume "True"  \n',...
+            '.Coordinates "Free"  \n',...
+            '.SetSubvolume "%s", "%s", "%s", "%s", "%s", "%s"  \n',...
+            '.SetSubvolumeOffset "0.0", "0.0", "0.0", "0.0", "0.0", "0.0"  \n'...
+            '.SetSubvolumeInflateWithOffset "False" \n',...
+            '.CreateUsingLinearSamples "%.3f", "%.3f", "%d" \n'...
+            'End With' ],volume(1),volume(2),volume(3),volume(4),volume(5),volume(6),fmin,fmax,fsamples);
+        addToCstHistory(mws,command,efield_monitor_vba);
 end
 
 

@@ -3,10 +3,10 @@ phi_step = 1;
 theta_step = 1;
 phi = 0:phi_step:360;
 theta = 0:theta_step:180;
-frequencies = 80e9:10e9:120e9;
+frequencies = [30e9];
 [phi, theta] = meshgrid(phi,theta);
 [Etheta, Ephi] = cosq(theta,phi,15);
-fileID = fopen(fullfile(pwd,"farfieldsources2.ffs"),'w+');
+fileID = fopen(fullfile(pwd,"farfieldsources30.ffs"),'w+');
 save_diagrams2file(fileID,frequencies,Etheta,Ephi,theta,phi);
 fclose(fileID);
 
