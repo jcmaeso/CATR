@@ -1,0 +1,53 @@
+With Mesh 
+     .MeshType "Surface" 
+     .SetCreator "High Frequency"
+End With 
+With MeshSettings 
+     .SetMeshType "Srf" 
+     .Set "Version", 1%%
+     'MAX CELL - WAVELENGTH REFINEMENT 
+     .Set "StepsPerWaveNear", "%f" 
+     .Set "StepsPerWaveFar", "1" 
+     'MAX CELL - GEOMETRY REFINEMENT 
+     .Set "StepsPerBoxNear", "%f" 
+     .Set "StepsPerBoxFar", "1" 
+     .Set "ModelBoxDescrNear", "maxedge" 
+     .Set "ModelBoxDescrFar", "maxedge" 
+     'MIN CELL 
+     .Set "UseRatioLimit", "0" 
+     .Set "RatioLimit", "100" 
+     .Set "MinStep", "0" 
+     'MESHING METHOD 
+     .SetMeshType "Unstr" 
+     .Set "Method", "0" 
+End With 
+With MeshSettings 
+     .SetMeshType "Srf" 
+     .Set "CurvatureOrder", "1" 
+     .Set "CurvatureOrderPolicy", "automatic" 
+     .Set "CurvRefinementControl", "NormalTolerance" 
+     .Set "NormalTolerance", "22.5" 
+     .Set "SrfMeshGradation", "2" 
+     .Set "SrfMeshOptimization", "1" 
+End With 
+With MeshSettings 
+     .SetMeshType "Unstr" 
+     .Set "UseMaterials",  "1" 
+     .Set "MoveMesh", "0" 
+End With 
+With MeshSettings 
+     .SetMeshType "All" 
+     .Set "AutomaticEdgeRefinement",  "0" 
+End With 
+With MeshSettings 
+     .SetMeshType "Srf" 
+     .Set "UseAnisoCurveRefinement", "1" 
+     .Set "UseSurfaceMeshQuadMeshing", "0" 
+End With 
+With MeshSettings 
+     .SetMeshType "Unstr" 
+     .Set "SmallFeatureSize", "0" 
+     .Set "CoincidenceTolerance", "1e-06" 
+     .Set "SelfIntersectionCheck", "1" 
+     .Set "OptimizeForPlanarStructures", "0" 
+End With 

@@ -1,10 +1,10 @@
-function [] = model_fun(filename,freq,monitors)
+function [] = model_fun(filename,freq,monitors,mesh_options,sim_options)
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 baseTriang1 = 9;
-baseTriang2 = 7;
-htriang1 = 5;
-htriang2 = 8;
+baseTriang2 = 5;
+htriang1 = 8;
+htriang2 = 5;
 maxBox = 600;
 repetition_factor = [8,8]; %X-Y Repetition Factor
 
@@ -23,7 +23,7 @@ cp = C-D/2;
 tilt = atand((D+cp)/(2*F))+atand(cp/(2*F));
 %Simulation Parametes
 frequency_min = freq-1;  %Ghz
-frequency_max = freq+1;  %Ghz
+frequency_max = freq;  %Ghz
 
 units_vba = sprintf(['With Units\n',...
     '.Geometry "%s"\n',...
@@ -98,17 +98,25 @@ createPolygon3D(mws,"Create expand line Y","framey","frame",["0","-10","0";"0","
 %Add Field Monitors
 %setMonitorEFieldVolume(mws,"Efield Monitors Volume",30,120,10,["-50","0","100";"50","100","300"]);
 for i= 1:length(monitors)
-     setMonitorEFieldPlane(mws,sprintf("EField Monitor %f",monitors(i)),freq,monitors(i));
+     setMonitorEFieldPlane(mws,sprintf("EField Monitor %f",monitors(i)),freq,[-1, 1,0, 100],monitors(i));
 end
-
 %Simulation Setup
-simulationSetup(mws,"Sim Setup","simParameters.txt");
+sim = "simParametersLow.txt";
+if sim_options == "med"
+    sim = "simParametersMed.txt";
+end
+simulationSetup(mws,"Sim Setup",sim);
+%Change mesh according to frequency
+%1000x1000 cells
+meshSetup(mws,"Meshing","meshParameters.txt",mesh_options)
 %Save File
 mws.invoke('saveas',filename,'false');
 %Start Solver
 %solver = invoke(mws, 'FDSolver');
 %invoke(solver, 'start');
+mws.invoke('quit');
 end
+
 function[] = createPolygonfromPoints(mws,command,name,curve_name,points)
     point_list = sprintf('.LineTo "%0.5f","%0.5f" \n',points(2:end,:).');
     polygon_vba = sprintf(['With Polygon\n',...
@@ -278,7 +286,7 @@ function[] = setFrequencyRange(mws,command,frequencies)
     addToCstHistory(mws,sprintf("%s",command),sprintf('Solver.FrequencyRange "%s", "%s"',frequencies(1),frequencies(2)));
 end
 
-function[] = setMonitorEFieldPlane(mws,command,freq,z)
+function[] = setMonitorEFieldPlane(mws,command,freq,plane_zone,z)
         farfield_import_vba = sprintf(['With Monitor\n',...
             '.Reset \n',...
             '.Name "e-field (f=%d;z=%d)" \n'...
@@ -286,15 +294,15 @@ function[] = setMonitorEFieldPlane(mws,command,freq,z)
             '.Domain "Frequency" \n',...
             '.FieldType "Efield"  \n',...
             '.UseSubvolume "True" \n',...
-            '.Coordinates "Structure"  \n',...
-            '.SetSubvolume "-50", "50", "0", "100", "-2.9316524078422", "15.723665948778"  \n',...
+            '.Coordinates "Free"  \n',...
+            '.SetSubvolume "%f", "%f", "%f", "%f", "-2.9316524078422", "15.723665948778"  \n',...
             '.SetSubvolumeOffset "0.0", "0.0", "0.0", "0.0", "0.0", "0.0"   \n',...
             ' .SetSubvolumeInflateWithOffset "False"   \n',...
             ' .PlaneNormal "z"   \n',...
             ' .PlanePosition "%f" \n'...
             '.MonitorValue "%f" \n'...
             '.Create \n'...
-            'End With' ],freq,z,z,freq);
+            'End With' ],[freq,z,plane_zone,z,freq]);
         addToCstHistory(mws,command,farfield_import_vba);
 end
 
