@@ -1,4 +1,4 @@
-function [] = model_fun(filename,freq,monitors,mesh_options,sim_options)
+function [] = model_fun(filename,freq,monitors,mesh_options,sim_options,solver,farfield_file)
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 baseTriang1 = 9;
@@ -44,7 +44,11 @@ mws = invoke(cst, 'NewMws');
 %Units Setter
 addToCstHistory(mws,"Set Something",units_vba);
 %Solver to integral
-changeSolver2Integral(mws,"Integral Solver");
+if solver == "mom"
+    changeSolver2Integral(mws,"Integral Solver");
+else 
+    changeSolver2Asymptotic(mws,"Asymptotic Solver");
+end
 %Set frequency range
 setFrequencyRange(mws,'Frequency Range',[frequency_min,frequency_max]) %In GHz
 %Parameter Setter
@@ -88,7 +92,7 @@ thickenSheet(mws,"Thicken Reflector","component1:paraboloid","ReflectorThickness
 activateLocalWCS(mws,"Change to Local WCS");
 moveLocalWCS2Focus(mws,"Focus WCS",["0.0","0.0","F"],"tilt");
 %Add Farfield sources
-createFarFieldSource(mws,"Farfield source 1","ffs","1",fullfile(pwd,"farfieldsources30-120.ffs"));
+createFarFieldSource(mws,"Farfield source 1","ffs","1",farfield_file);
 
 %Simulation Bounding Box
 activateGlobalWCS(mws,"Return to global WCS")
@@ -98,17 +102,24 @@ createPolygon3D(mws,"Create expand line Y","framey","frame",["0","-10","0";"0","
 %Add Field Monitors
 %setMonitorEFieldVolume(mws,"Efield Monitors Volume",30,120,10,["-50","0","100";"50","100","300"]);
 for i= 1:length(monitors)
-     setMonitorEFieldPlane(mws,sprintf("EField Monitor %f",monitors(i)),freq,[-1, 1,0, 100],monitors(i));
+     setMonitorEFieldPlane(mws,sprintf("EField Monitor %f",monitors(i)),freq,[-50, 50,0, 100],monitors(i));
 end
 %Simulation Setup
-sim = "simParametersLow.txt";
-if sim_options == "med"
-    sim = "simParametersMed.txt";
+if solver == "mom"
+    sim = "simParametersLow.txt";
+    if sim_options == "med"
+        sim = "simParametersMed.txt";
+    end
+else
+    sim = "simParametersGO.txt";
 end
+
 simulationSetup(mws,"Sim Setup",sim);
 %Change mesh according to frequency
 %1000x1000 cells
-meshSetup(mws,"Meshing","meshParameters.txt",mesh_options)
+if solver == "mom"
+    meshSetup(mws,"Meshing","meshParameters.txt",mesh_options)
+end
 %Save File
 mws.invoke('saveas',filename,'false');
 %Start Solver
@@ -265,6 +276,10 @@ end
 
 function[] = changeSolver2Integral(mws,command)
     addToCstHistory(mws,command,'ChangeSolverType "HF IntegralEq"');
+end
+
+function[] = changeSolver2Asymptotic(mws,command)
+    addToCstHistory(mws,command,'ChangeSolverType "HF Asymptotic"');
 end
 
 function[] = activateLocalWCS(mws,command)
